@@ -10,37 +10,13 @@ export DEVICE="lavender"
 export CONFIG="lavender-perf_defconfig"
 
 # TELEGRAM START
-
 git clone --depth=1 https://github.com/fabianonline/telegram.sh telegram
-
 
 TELEGRAM=telegram/telegram
 
 pushKernel() {
-    if [[ $DEVICE =~ "lavender" ]];
-    then
-        NAME="Redmi Note 7"
-    elif [[ $DEVICE =~ "ginkgo" ]];
-    then
-        NAME="Redmi Note 8"
-    else
-        NAME="Redmi Note 6 Pro"
-    fi
-    KERNEL=$(cat out/.config | grep Linux/arm64 | cut -d " " -f3)
 	curl -F document=@$(echo $ZIP_DIR/*.zip)  "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendDocument" \
-			-F chat_id="$CHANNEL_ID" \
-			-F parse_mode="html" \
-			-F caption="New build available!
-Linux version : <code>$KERNEL</code>
-Device : <code>$NAME</code>
-Code : <code>$DEVICE</code>
-Toolchain : <code>${KBUILD_COMPILER_STRING}</code>
-Branch : <code>${BRANCH}</code>
-Commit Point : <code>$(git log --pretty=format:'"%h : %s"' -1)</code>
-        
-        
-➤ @Tutorially
-➤ Xiaomi Redmi $NAME"
+			-F chat_id="$CHANNEL_ID"
 }
 
 tg_channelcast() {
@@ -54,33 +30,33 @@ tg_channelcast() {
 
 tg_sendstick() {
     curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendSticker" \
-        -d sticker="CAADBQADCwADfmlfEgEtqXB1SD3FFgQ" \
+        -d sticker="" \
         -d chat_id="$CHANNEL_ID"
 }
-
-# TELEGRAM END 
-
-git clone --depth=1 https://github.com/crDroidMod/android_prebuilts_clang_host_linux-x86_clang-6032204 ../toolchain/clang
-git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm
-git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm64
-git clone https://github.com/oxygentech/AnyKernel3 -b $DEVICE
-
+# TELEGRAM END
 
 # Main environtment
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 KERNEL_DIR=$(pwd)
 PARENT_DIR="$(dirname "$KERNEL_DIR")"
-KERN_IMG=$KERNEL_DIR/out/arch/arm64/boot/Image.gz
-DTB=$KERNEL_DIR/out/arch/arm64/boot/dts/qcom
+KERN_IMG=$KERNEL_DIR/out/arch/arm64/boot/Image.gz-dtb
 CONFIG_PATH=$KERNEL_DIR/arch/arm64/configs/$CONFIG
 PATH="${PARENT_DIR}/toolchain/clang/bin:${PARENT_DIR}/toolchain/gcc-arm64/bin:${PARENT_DIR}/toolchain/gcc-arm/bin:${PATH}"
+
+if ! [[ $BRANCH =~ "10" ]]; then
+    git clone --depth=1 https://github.com/crDroidMod/android_prebuilts_clang_host_linux-x86_clang-5900059 ../toolchain/clang
+else
+    git clone --depth=1 https://github.com/crDroidMod/android_prebuilts_clang_host_linux-x86_clang-6032204 ../toolchain/clang
+fi
+git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm
+git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm64
+git clone https://github.com/oxygentech/AnyKernel3 -b $DEVICE
+
+# Build kernel
 export KBUILD_COMPILER_STRING="$(${PARENT_DIR}/toolchain/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 export KBUILD_BUILD_USER="oxygentech"
 export TZ=":Asia/Jakarta"
 
-banners "Start Build Kernel"
-
-# Build kernel
 build_gcc () {
     make -j$(nproc --all) O=out \
                           ARCH=arm64 \
@@ -103,7 +79,6 @@ if ! [ -a $KERN_IMG ]; then
     tg_channelcast "<b>BuildCI report status:</b> There are build running but its error, please fix and remove this message!"
     exit 1
 fi
-
 
 # Make zip installer
 
@@ -137,15 +112,22 @@ sed -i 's/WLAN=m/WLAN=y/g' $CONFIG_PATH
 make O=out ARCH=arm64 $CONFIG
 build_clang
 fi
-cp $DTB/*.dtb $ZIP_DIR/dtb
-cp $DTB/*.dtbo $ZIP_DIR/
-cp $KERN_IMG $ZIP_DIR/kernel
+cp $KERN_IMG $ZIP_DIR
 make -C $ZIP_DIR normal
 
-banners "Send Kernel Zip To Telegram"
-
 # Post TELEGRAM
-
-#tg_sendstick
-#tg_channelcast "New build available!"
+if [[ $DEVICE =~ "lavender" ]]; then
+    NAME="Redmi Note 7/7S"
+elif [[ $DEVICE =~ "ginkgo" ]]; then
+    NAME="Redmi Note 8"
+else
+    NAME="Redmi Note 6 Pro"
+fi
+KERNEL=$(cat out/.config | grep Linux/arm64 | cut -d " " -f3)
+tg_channelcast "New build available!" \
+    "Device : <code>$NAME</code>" \
+    "Linux version : <code>$KERNEL</code>" \
+    "Toolchain : <code>${KBUILD_COMPILER_STRING}</code>" \
+    "Branch : <code>${BRANCH}</code>" \
+    "Commit Point : <code>$(git log --pretty=format:'"%h : %s"' -1)</code>"
 pushKernel
