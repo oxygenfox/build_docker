@@ -4,10 +4,10 @@
 # For sdm660
 
 # Export var
-export CHANNEL_ID="-1001212044187"
-export TELEGRAM_TOKEN="1002449676:AAHmfSwhRtXn35STTX9xaZ71G_OG10GsdnA"
-export DEVICE="lavender"
-export CONFIG="lavender-perf_defconfig"
+
+
+
+
 
 # TELEGRAM START
 git clone --depth=1 https://github.com/fabianonline/telegram.sh telegram
