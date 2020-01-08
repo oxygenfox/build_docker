@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-#
-# SemaphoreCI Classic Kernel Build Script
-# For sdm660
-
-# Export var
-
-
-
-
 
 # TELEGRAM START
 git clone --depth=1 https://github.com/fabianonline/telegram.sh telegram
@@ -28,10 +19,40 @@ tg_channelcast() {
         )"
 }
 
-tg_sendstick() {
-    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendSticker" \
-        -d sticker="" \
-        -d chat_id="$CHANNEL_ID"
+tg_sendphoto() {
+    if [[ $DEVICE =~ "lavender" ]]; then
+    NAME="Redmi Note 7/7S"
+elif [[ $DEVICE =~ "ginkgo" ]]; then
+    NAME="Redmi Note 8"
+elif [[ $DEVICE =~ "vince" ]]; then
+    NAME="Redmi 5 Plus"
+else
+    NAME="Redmi Note 6 Pro"
+fi
+
+if ! [[ $BRANCH =~ "10" ]]; then
+    ANDROID="9 (Pie)"
+else
+    ANDROID="10 (Q)"
+fi
+    KERNEL=$(cat out/.config | grep Linux/arm64 | cut -d " " -f3)
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendPhoto" \
+        -d photo="AgADBQADW6kxG8m2kFRAqZq_y-Ckszo6GzMABAEAAwIAA3gAA_BqAgABFgQ" \
+        -d chat_id="$CHANNEL_ID" \
+        -d parse_mode="HTML" \
+        -d caption="<b>Oxygen Tech Kernel || Rebuild 2 || Upstream || New build Realease!</b>
+        
+📱 <b>Device</b> : <code>$NAME</code>
+🤖 <b>Android version</b> : <code>$ANDROID</code>
+💻 <b>Linux version</b> : <code>$KERNEL</code>
+🔧 <b>Toolchain</b> : <code>${KBUILD_COMPILER_STRING}</code>
+🖇️ <b>Branch</b> : <code>${BRANCH}</code>
+📝 <b>Commit Point</b> : <code>$(git log --pretty=format:'"%h : %s"' -1)</code>
+
+📥 <b>Download</b> : Here
+
+🧔 <b>Mainteners</b> @FvckinD
+🐞 <b>Bug Report</b> @oxygentech_bot"
 }
 # TELEGRAM END
 
@@ -48,13 +69,14 @@ if ! [[ $BRANCH =~ "10" ]]; then
 else
     git clone --depth=1 https://github.com/crDroidMod/android_prebuilts_clang_host_linux-x86_clang-6032204 ../toolchain/clang
 fi
+
 git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm
 git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 -b android-9.0.0_r50 ../toolchain/gcc-arm64
 git clone https://github.com/oxygentech/AnyKernel3 -b $DEVICE
 
 # Build kernel
 export KBUILD_COMPILER_STRING="$(${PARENT_DIR}/toolchain/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
-export KBUILD_BUILD_USER="oxygentech"
+export KBUILD_BUILD_USER="AI"
 export TZ=":Asia/Jakarta"
 
 build_gcc () {
@@ -74,6 +96,7 @@ build_clang () {
 }
 
 make O=out ARCH=arm64 $CONFIG
+
 build_clang
 if ! [ -a $KERN_IMG ]; then
     tg_channelcast "<b>BuildCI report status:</b> There are build running but its error, please fix and remove this message!"
@@ -116,18 +139,5 @@ cp $KERN_IMG $ZIP_DIR
 make -C $ZIP_DIR normal
 
 # Post TELEGRAM
-if [[ $DEVICE =~ "lavender" ]]; then
-    NAME="Redmi Note 7/7S"
-elif [[ $DEVICE =~ "ginkgo" ]]; then
-    NAME="Redmi Note 8"
-else
-    NAME="Redmi Note 6 Pro"
-fi
-KERNEL=$(cat out/.config | grep Linux/arm64 | cut -d " " -f3)
-tg_channelcast "New build available!" \
-    "Device : <code>$NAME</code>" \
-    "Linux version : <code>$KERNEL</code>" \
-    "Toolchain : <code>${KBUILD_COMPILER_STRING}</code>" \
-    "Branch : <code>${BRANCH}</code>" \
-    "Commit Point : <code>$(git log --pretty=format:'"%h : %s"' -1)</code>"
+tg_sendphoto
 pushKernel
